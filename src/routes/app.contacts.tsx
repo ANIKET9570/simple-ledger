@@ -49,21 +49,64 @@ function ContactsPage() {
   const { data: contacts, isLoading } = useQuery({
     queryKey: ["contacts"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("contacts").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
-      return data as Contact[];
+      let allData: Contact[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const start = page * pageSize;
+        const end = start + pageSize - 1;
+        
+        const { data, error } = await supabase
+          .from("contacts")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(start, end);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          hasMore = data.length === pageSize;
+          page++;
+        }
+      }
+      
+      return allData as Contact[];
     },
   });
 
   const { data: txs } = useQuery({
     queryKey: ["transactions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .order("occurred_on", { ascending: false });
-      if (error) throw error;
-      return data as Transaction[];
+      let allData: Transaction[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const start = page * pageSize;
+        const end = start + pageSize - 1;
+        
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("*")
+          .order("occurred_on", { ascending: false })
+          .range(start, end);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          hasMore = data.length === pageSize;
+          page++;
+        }
+      }
+      
+      return allData as Transaction[];
     },
   });
 
