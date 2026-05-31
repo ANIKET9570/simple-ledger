@@ -31,12 +31,32 @@ function TransactionsPage() {
   const { data: txs, isLoading } = useQuery({
     queryKey: ["transactions"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("id,type,amount,category,description,occurred_on,contact_id,contacts(name)")
-        .order("occurred_on", { ascending: false });
-      if (error) throw error;
-      return data as unknown as Tx[];
+      let allData: Tx[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const start = page * pageSize;
+        const end = start + pageSize - 1;
+        
+        const { data, error } = await supabase
+          .from("transactions")
+          .select("id,type,amount,category,description,occurred_on,contact_id,contacts(name)")
+          .order("occurred_on", { ascending: false })
+          .range(start, end);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          hasMore = false;
+        } else {
+          allData = [...allData, ...data];
+          hasMore = data.length === pageSize;
+          page++;
+        }
+      }
+      
+      return allData as unknown as Tx[];
     },
   });
 
@@ -115,6 +135,7 @@ function TransactionsPage() {
           <table className="w-full text-sm">
             <thead className="border-b bg-secondary/50 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
+                <th className="px-4 py-2.5 text-left font-medium w-10">S.No</th>
                 <th className="px-4 py-2.5 text-left font-medium">Date</th>
                 <th className="px-4 py-2.5 text-left font-medium">Description</th>
                 <th className="px-4 py-2.5 text-left font-medium">Category</th>
@@ -124,8 +145,9 @@ function TransactionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {txs.map((t) => (
+              {txs.map((t, index) => (
                 <tr key={t.id} className="hover:bg-accent/40">
+                  <td className="px-4 py-3 text-muted-foreground font-medium">{index + 1}</td>
                   <td className="px-4 py-3 text-muted-foreground">{t.occurred_on}</td>
                   <td className="px-4 py-3">{t.description || <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3">
